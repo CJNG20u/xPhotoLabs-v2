@@ -1,0 +1,8 @@
+{
+  "name": " xPhotoLabs v2 Public Version ",
+  "description": "Self-hosted photo and video gallery PWA with local NVMe SQLite/WebP thumbnails, read-only NAS external mounts, SHA-256 deduplicated sync, and virtualized timeline browsing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
