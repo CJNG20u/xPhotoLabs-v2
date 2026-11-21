@@ -11,7 +11,13 @@ import { config, ensureStorageDirectories } from './server/config.ts';
 import { db } from './server/db.ts';
 import type { AlbumRow, MediaRow, MountRow, ShareRow, SyncTokenRow } from './server/db.ts';
 import { classifyMediaExtension, ingestMediaFile, seedInitialGalleryIfEmpty } from './server/mediaPipeline.ts';
-import { addExternalMount, bootstrapConfiguredMounts, scanMount, stopMountWatcher } from './server/mounts.ts';
+import {
+  addExternalMount,
+  bootstrapConfiguredMounts,
+  scanMount,
+  stopAllMountWatchers,
+  stopMountWatcher,
+} from './server/mounts.ts';
 import {
   assertSafePathWithin,
   generateOpaqueToken,
@@ -166,6 +172,10 @@ function getDirSizeBytes(dirPath: string): number {
 
 const findSyncTokenByHashStmt = db.prepare('SELECT id FROM sync_tokens WHERE token_hash = ?');
 const markSyncTokenUsedStmt = db.prepare('UPDATE sync_tokens SET last_used_at = ? WHERE id = ?');
+const countSyncTokensStmt = db.prepare('SELECT COUNT(*) as count FROM sync_tokens');
+const findDeletedHashStmt = db.prepare('SELECT sha256 FROM deleted_hashes WHERE sha256 = ?');
+const recordDeletedHashStmt = db.prepare('INSERT OR IGNORE INTO deleted_hashes (sha256, deleted_at) VALUES (?, ?)');
+const removeDeletedHashStmt = db.prepare('DELETE FROM deleted_hashes WHERE sha256 = ?');
 
 function checkOptionalBearerAuth(req: FastifyRequest, reply: FastifyReply): boolean {
   const authHeader = req.headers.authorization;
@@ -181,6 +191,43 @@ function checkOptionalBearerAuth(req: FastifyRequest, reply: FastifyReply): bool
   }
   return true;
 }
+
+function requireBearerSyncAuth(req: FastifyRequest, reply: FastifyReply): boolean {
+  const hasAnyToken = Boolean(config.envSyncApiToken) || ((countSyncTokensStmt.get() as { count: number }).count > 0);
+  if (!hasAnyToken) {
+    reply.code(401).send({
+      error: 'Sync authentication is not configured. Set SYNC_API_TOKEN or create a token in Storage & Sync.',
+    });
+    return false;
+  }
+  const result = verifyBearerSyncToken(
+    req.headers.authorization,
+    (hash) => findSyncTokenByHashStmt.get(hash) as { id: string } | undefined,
+    (id) => markSyncTokenUsedStmt.run(new Date().toISOString(), id)
+  );
+  if (!result.authenticated) {
+    reply.code(401).send({ error: 'Missing or invalid Bearer sync API token' });
+    return false;
+  }
+  return true;
+}
+
+// ============================================================================
+// HEALTHCHECK ENDPOINT
+// ============================================================================
+
+app.get('/api/health', async (_req, reply) => {
+  try {
+    db.prepare('SELECT 1').get();
+    return {
+      status: 'ok',
+      uptime: Math.round(process.uptime()),
+      timestamp: new Date().toISOString(),
+    };
+  } catch {
+    return reply.code(503).send({ status: 'error', error: 'Database unavailable' });
+  }
+});
 
 // ============================================================================
 // MEDIA QUERY & MANAGEMENT ROUTES
@@ -364,6 +411,7 @@ async function permanentlyDeleteMediaRow(row: MediaRow): Promise<{ deletedFromDi
     }
   }
 
+  recordDeletedHashStmt.run(row.sha256, new Date().toISOString());
   db.prepare('DELETE FROM media WHERE id = ?').run(row.id);
 
   if (row.mount_id) {
@@ -502,7 +550,7 @@ app.get('/api/media/:id/original', async (req, reply) => {
 });
 
 // ============================================================================
-// DEDUPLICATION & SYNC API (POST /api/sync/check & POST /api/upload)
+// DEDUPLICATION & SYNC API (POST /api/sync, /api/sync/check, & /api/upload)
 // ============================================================================
 
 app.post('/api/sync/check', async (req, reply) => {
@@ -529,27 +577,35 @@ app.post('/api/sync/check', async (req, reply) => {
 
   const lookupStmt = db.prepare('SELECT sha256 FROM media WHERE sha256 = ?');
   const existingSet = new Set<string>();
+  const ignoredSet = new Set<string>();
   for (const item of normalized) {
     if (lookupStmt.get(item.sha256)) {
       existingSet.add(item.sha256);
+    } else if (findDeletedHashStmt.get(item.sha256)) {
+      ignoredSet.add(item.sha256);
     }
   }
 
-  const missing = normalized.filter((item) => !existingSet.has(item.sha256));
+  const missing = normalized.filter((item) => !existingSet.has(item.sha256) && !ignoredSet.has(item.sha256));
   const existing = normalized.filter((item) => existingSet.has(item.sha256));
+  const ignored = normalized.filter((item) => ignoredSet.has(item.sha256));
 
   return {
     checked: normalized.length,
     missing,
     existing,
+    ignored,
     missingHashes: missing.map((m) => m.sha256),
+    ignoredHashes: ignored.map((m) => m.sha256),
   };
 });
 
-async function handleMultipartIngest(req: FastifyRequest) {
+async function handleMultipartIngest(req: FastifyRequest, options?: { skipDeletedHashes?: boolean }) {
+  const skipDeletedHashes = options?.skipDeletedHashes ?? false;
   const parts = req.parts();
   const uploaded: Array<ReturnType<typeof serializeMedia>> = [];
   const duplicates: Array<{ filename: string; sha256: string; mediaId: string }> = [];
+  const ignored: Array<{ filename: string; sha256: string; reason: string }> = [];
   const errors: Array<{ filename: string; error: string }> = [];
   const mountMap = getMountNameMap();
 
@@ -575,6 +631,27 @@ async function handleMultipartIngest(req: FastifyRequest) {
       });
       await pipeline(part.file, writeStream);
       const sha256 = hash.digest('hex');
+
+      if (skipDeletedHashes && findDeletedHashStmt.get(sha256)) {
+        if (fs.existsSync(tempPath)) {
+          try {
+            fs.unlinkSync(tempPath);
+          } catch {
+            // ignore
+          }
+        }
+        ignored.push({
+          filename: rawFilename,
+          sha256,
+          reason: 'Previously deleted from gallery',
+        });
+        continue;
+      }
+
+      if (!skipDeletedHashes) {
+        // Explicit manual re-upload clears the deleted-hash ignore record
+        removeDeletedHashStmt.run(sha256);
+      }
 
       const result = await ingestMediaFile({
         sourcePath: tempPath,
@@ -614,15 +691,24 @@ async function handleMultipartIngest(req: FastifyRequest) {
     }
   }
 
-  return { uploaded, duplicates, errors };
+  return { uploaded, duplicates, ignored, errors };
 }
+
+// Automated Bearer-authenticated mobile/CLI sync endpoint (Tasker, Apple Shortcuts, scripts)
+app.post('/api/sync', async (req, reply) => {
+  if (!requireBearerSyncAuth(req, reply)) return;
+  if (!req.isMultipart()) {
+    return reply.code(400).send({ error: 'Content-Type must be multipart/form-data' });
+  }
+  return handleMultipartIngest(req, { skipDeletedHashes: true });
+});
 
 app.post('/api/upload', async (req, reply) => {
   if (!checkOptionalBearerAuth(req, reply)) return;
   if (!req.isMultipart()) {
     return reply.code(400).send({ error: 'Content-Type must be multipart/form-data' });
   }
-  const result = await handleMultipartIngest(req);
+  const result = await handleMultipartIngest(req, { skipDeletedHashes: false });
   return result;
 });
 
@@ -1326,9 +1412,31 @@ if (!config.isProd) {
   });
 }
 
-// Seed sample media on fresh install & bootstrap configured external NAS mounts
+// Seed sample media on fresh install (when enabled) & bootstrap configured external mounts
 await seedInitialGalleryIfEmpty();
 await bootstrapConfiguredMounts();
 
 await app.listen({ port: config.port, host: config.host });
 console.log(`xPhotoLabs server listening on http://${config.host}:${config.port} (DATA_DIR: ${config.dataDir})`);
+
+let shuttingDown = false;
+async function gracefulShutdown(signal: string) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`Received ${signal}, shutting down xPhotoLabs cleanly...`);
+  try {
+    await stopAllMountWatchers();
+    await app.close();
+    db.close();
+  } catch (err) {
+    console.error('Error during shutdown:', err);
+  }
+  process.exit(0);
+}
+
+process.on('SIGTERM', () => {
+  void gracefulShutdown('SIGTERM');
+});
+process.on('SIGINT', () => {
+  void gracefulShutdown('SIGINT');
+});

@@ -1,0 +1,35 @@
+# Dependencies & build outputs
+node_modules
+dist
+dev-dist
+build
+coverage
+
+# Version control & editor artifacts
+.git
+.gitignore
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# Environment secrets & local runtime data
+.env
+.env.*
+data
+photos
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.log
+npm-debug.log*
+
+# Container & deployment docs
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose.*.yml
+deploy
+README.md

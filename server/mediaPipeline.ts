@@ -480,8 +480,12 @@ export async function seedInitialGalleryIfEmpty(): Promise<void> {
   const countRow = db.prepare('SELECT COUNT(*) as count FROM media').get() as { count: number };
   if (countRow.count > 0) return;
 
-  const assetsDir = path.resolve(process.cwd(), 'src', 'assets', 'images');
-  if (!fs.existsSync(assetsDir)) return;
+  const candidateDirs = [
+    path.resolve(process.cwd(), 'src', 'assets', 'images'),
+    path.resolve(process.cwd(), 'dist', 'src', 'assets', 'images'),
+  ];
+  const assetsDir = candidateDirs.find((dir) => fs.existsSync(dir));
+  if (!assetsDir) return;
 
   const sampleSpecs: Array<{
     filePrefix: string;

@@ -1,6 +1,5 @@
 [Unit]
 Description=xPhotoLabs Self-Hosted Photo & Video Gallery PWA
-Documentation=file:///opt/xphotolabs/deploy/README.md
 After=network-online.target local-fs.target remote-fs.target
 Wants=network-online.target
 
@@ -8,27 +7,27 @@ Wants=network-online.target
 Type=simple
 User=xphotolabs
 Group=xphotolabs
-WorkingDirectory=/opt/xphotolabs
+WorkingDirectory=/srv/xphotolabs
 Environment=NODE_ENV=production
 Environment=PORT=3000
 Environment=HOST=0.0.0.0
-Environment=DATA_DIR=/var/lib/xphotolabs
-Environment=UPLOAD_DIR=/var/lib/xphotolabs/uploads
+Environment=DATA_DIR=/data
+Environment=UPLOAD_DIR=/data/uploads
 Environment=SEED_DEMO_MEDIA=false
-EnvironmentFile=-/opt/xphotolabs/.env
-ExecStart=/usr/bin/node /opt/xphotolabs/server.ts
+EnvironmentFile=-/srv/xphotolabs/.env
+ExecStart=/usr/bin/node /srv/xphotolabs/server.ts
 Restart=on-failure
 RestartSec=5s
 LimitNOFILE=65536
 
-# Security Hardening (Read-Only NAS mounts remain accessible via ReadOnlyPaths)
+# Security Hardening (adjust ReadWritePaths / ReadOnlyPaths to match your host directories)
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/var/lib/xphotolabs
-# Uncomment and add your read-only NAS paths as needed:
-# ReadOnlyPaths=/mnt/nas/photos /mnt/nas/videos
+ReadWritePaths=/data
+# Uncomment and add your mounted media paths as needed:
+# ReadOnlyPaths=/photos
 
 [Install]
 WantedBy=multi-user.target

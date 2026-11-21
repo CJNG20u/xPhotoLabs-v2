@@ -95,6 +95,11 @@ db.exec(`
     created_at TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS deleted_hashes (
+    sha256 TEXT PRIMARY KEY,
+    deleted_at TEXT NOT NULL
+  );
+
   CREATE INDEX IF NOT EXISTS idx_media_taken_at ON media(taken_at DESC);
   CREATE INDEX IF NOT EXISTS idx_media_trashed ON media(is_trashed, taken_at DESC);
   CREATE INDEX IF NOT EXISTS idx_media_favorite ON media(is_favorite, is_trashed, taken_at DESC);

@@ -36,7 +36,7 @@ export function validateExternalMountPath(rawPath: string): { valid: true; resol
     return { valid: false, error: 'Mount path is empty or contains invalid characters.' };
   }
   if (!path.isAbsolute(trimmed)) {
-    return { valid: false, error: 'External mount path must be an absolute filesystem path (e.g. /mnt/nas/photos).' };
+    return { valid: false, error: 'External mount path must be an absolute filesystem path (e.g. /photos).' };
   }
 
   const resolved = path.resolve(trimmed);

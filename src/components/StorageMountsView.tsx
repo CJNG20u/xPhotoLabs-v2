@@ -216,7 +216,7 @@ export const StorageMountsView: React.FC<StorageMountsViewProps> = ({
                 type="text"
                 value={mountName}
                 onChange={(e) => setMountName(e.target.value)}
-                placeholder="Synology Archive"
+                placeholder="Photo Library"
                 className="w-full rounded-xl bg-white dark:bg-[#282A2C] px-3.5 py-2.5 text-sm text-[#1F1F1F] dark:text-[#E3E3E3] focus:outline-none focus:ring-2 focus:ring-[#0B57D0]/40 dark:focus:ring-[#A8C7FA]/40"
               />
             </div>
@@ -229,7 +229,7 @@ export const StorageMountsView: React.FC<StorageMountsViewProps> = ({
                 required
                 value={mountPath}
                 onChange={(e) => setMountPath(e.target.value)}
-                placeholder="/mnt/nas/photos"
+                placeholder="/photos"
                 className="w-full rounded-xl bg-white dark:bg-[#282A2C] px-3.5 py-2.5 text-sm text-[#1F1F1F] dark:text-[#E3E3E3] focus:outline-none focus:ring-2 focus:ring-[#0B57D0]/40 dark:focus:ring-[#A8C7FA]/40"
               />
             </div>
@@ -482,14 +482,14 @@ export const StorageMountsView: React.FC<StorageMountsViewProps> = ({
           </div>
         </section>
 
-        {/* 5. Bare-Metal Debian Service */}
+        {/* 5. Self-Hosted Deployment Configuration */}
         <section className="rounded-3xl bg-[#F8FAFD] dark:bg-[#1E1F20] p-6 space-y-1.5">
           <div className="flex items-center gap-2.5 text-base font-medium text-[#1F1F1F] dark:text-[#E3E3E3]">
             <Server className="w-5 h-5 text-[#0B57D0] dark:text-[#A8C7FA]" />
-            <h2>Bare-Metal Debian Deployment</h2>
+            <h2>Self-Hosted Deployment</h2>
           </div>
           <p className="text-xs text-[#747775] dark:text-[#8E918F] leading-relaxed">
-            Systemd unit ready at deploy/xphotolabs.service targeting /opt/xphotolabs and /var/lib/xphotolabs NVMe local data with read-only NAS mount support and zero Docker overhead.
+            Configure persistent storage, external NAS mounts, and sync tokens via environment variables (DATA_DIR, UPLOAD_DIR, EXTERNAL_MOUNTS, SYNC_API_TOKEN) in Docker Compose or your local .env file.
           </p>
         </section>
       </div>

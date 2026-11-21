@@ -158,6 +158,12 @@ export function stopMountWatcher(mountId: string): void {
   }
 }
 
+export async function stopAllMountWatchers(): Promise<void> {
+  const closing = Array.from(watchers.values()).map((w) => w.close().catch(() => {}));
+  watchers.clear();
+  await Promise.all(closing);
+}
+
 export function addExternalMount(name: string, rawPath: string, isWatching = true): MountRow {
   const check = validateExternalMountPath(rawPath);
   if (!check.valid) {

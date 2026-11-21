@@ -7,4 +7,10 @@ coverage/
 .env*
 !.env.example
 data/
+photos/
 dev-dist/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
