@@ -1,4 +1,6 @@
 # xPhotoLabs
+<img width="1151" height="1164" alt="image" src="https://github.com/user-attachments/assets/906a1dab-cd80-427e-84fd-93728409fe91" />
+
 
 A fast, minimalist, self-hosted photo and video gallery Progressive Web App (PWA) designed for Docker and NAS home servers. xPhotoLabs keeps its SQLite WAL metadata index and `400px` / `1600px` WebP thumbnail cache on fast local storage while indexing and watching your existing photo libraries in real time.
 
