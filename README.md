@@ -52,6 +52,9 @@ services:
 
       # Optional: mount an existing host/NAS photo library (see section below)
       # - /path/to/your/photos:/photos:ro
+    # Optional: match host UID:GID for NAS folder permissions
+    # (ensure ./data is owned by this UID:GID first: chown -R 1000:1000 ./data)
+    # user: "1000:1000"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/api/health"]
       interval: 30s
