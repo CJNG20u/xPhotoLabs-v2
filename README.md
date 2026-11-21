@@ -15,8 +15,8 @@ A fast, minimalist, self-hosted photo and video gallery PWA built with Node.js, 
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/CJNG20u/xphotolabs.git
-cd xphotolabs
+git clone https://github.com/CJNG20u/xPhotoLabs-v2.git
+cd xPhotoLabs-v2
 ```
 
 ### 2. Configure `.env`
