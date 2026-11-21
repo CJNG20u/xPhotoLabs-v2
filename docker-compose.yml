@@ -1,44 +1,15 @@
 services:
   xphotolabs:
-    image: ghcr.io/cjng20u/xphotolabs:latest
-    # Uncomment to build locally from source instead of pulling the prebuilt image:
-    # build: .
+    build: .
     container_name: xphotolabs
     restart: unless-stopped
     ports:
-      - "${PORT:-3000}:3000"
-    environment:
-      NODE_ENV: production
-      PORT: 3000
-      HOST: 0.0.0.0
-      APP_URL: ${APP_URL:-http://localhost:3000}
-      DATA_DIR: /data
-      UPLOAD_DIR: ${UPLOAD_DIR:-/data/uploads}
-      # Optional: auto-mount external media directories at startup
-      # Examples:
-      #   EXTERNAL_MOUNTS: "Photos:/photos"
-      #   EXTERNAL_MOUNTS: '[{"name":"Family Archive","path":"/photos"}]'
-      EXTERNAL_MOUNTS: ${EXTERNAL_MOUNTS:-}
-      # Optional: static Bearer token for /api/sync automation (generate with: openssl rand -hex 32)
-      SYNC_API_TOKEN: ${SYNC_API_TOKEN:-}
-      # Keep false in production so your gallery starts clean
-      SEED_DEMO_MEDIA: ${SEED_DEMO_MEDIA:-false}
+      - "3000:3000"
+    env_file:
+      - .env
     volumes:
-      # Persistent SQLite WAL metadata, 400px/1600px WebP thumbnails, and default uploads
       - ./data:/data
-
-      # Optional: mount an existing NAS or host photo library
-      # Read-only mount (indexes files non-destructively; xPhotoLabs cannot delete originals):
-      # - ./photos:/photos:ro
-      #
-      # Read-write mount (required for permanent Trash deletion on disk or UPLOAD_DIR=/photos/uploads):
-      # - ./photos:/photos
+      # Optional: mount an existing photo library (append :ro for read-only)
+      # - /path/to/your/photos:/photos
     # Optional: match host UID:GID for NAS folder permissions
-    # (ensure ./data is owned by this UID:GID first: chown -R 1000:1000 ./data)
     # user: "1000:1000"
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/api/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
