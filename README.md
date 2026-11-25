@@ -1,5 +1,7 @@
 # xPhotoLabs
 
+[![Docker image](https://github.com/CJNG20u/xPhotoLabs-v2/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/CJNG20u/xPhotoLabs-v2/pkgs/container/xphotolabs-v2)
+
 <img width="1151" height="1164" alt="image" src="https://github.com/user-attachments/assets/906a1dab-cd80-427e-84fd-93728409fe91" />
 
 A fast, minimalist, self-hosted photo and video gallery PWA built with Node.js, Fastify, SQLite (WAL), and React. Keeps metadata and `400px` / `1600px` WebP thumbnails on local storage while watching existing NAS libraries in real time.
@@ -56,6 +58,32 @@ docker compose up -d --build
 ```
 
 Open `http://localhost:3000` in your browser.
+
+### Prefer not to build? Use the prebuilt image
+
+Every push to `main` publishes a ready-made image to GitHub Container Registry, so you can skip cloning and building entirely. Create a folder with this `docker-compose.yml` (and optionally a `.env` from [.env.example](.env.example)):
+
+```yaml
+services:
+  xphotolabs:
+    image: ghcr.io/cjng20u/xphotolabs-v2:latest
+    container_name: xphotolabs
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - ./data:/data
+      # - /path/to/your/photos:/photos
+```
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+Images are built automatically for `linux/amd64` and `linux/arm64`. `:latest` follows `main`; each release also gets version tags (e.g. `:2.0.0`, `:2`) so you can pin a version. The repo's own `docker-compose.yml` also pulls this image first and only builds from source when you pass `--build`.
 
 ---
 

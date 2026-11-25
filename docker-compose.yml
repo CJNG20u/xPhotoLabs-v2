@@ -1,6 +1,7 @@
 services:
   xphotolabs:
-    build: .
+    image: ghcr.io/cjng20u/xphotolabs-v2:latest  # prebuilt image (pulled first)
+    build: .                                     # fallback / `--build` builds from source
     container_name: xphotolabs
     restart: unless-stopped
     ports:
