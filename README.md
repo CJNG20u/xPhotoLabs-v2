@@ -2,6 +2,12 @@
 
 [![Docker image](https://github.com/CJNG20u/xPhotoLabs-v2/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/CJNG20u/xPhotoLabs-v2/pkgs/container/xphotolabs-v2)
 
+🐳 **Docker image:** `ghcr.io/cjng20u/xphotolabs-v2:latest` (amd64 + arm64)
+
+```bash
+docker pull ghcr.io/cjng20u/xphotolabs-v2:latest
+```
+
 <img width="1151" height="1164" alt="image" src="https://github.com/user-attachments/assets/906a1dab-cd80-427e-84fd-93728409fe91" />
 
 A fast, minimalist, self-hosted photo and video gallery PWA built with Node.js, Fastify, SQLite (WAL), and React. Keeps metadata and `400px` / `1600px` WebP thumbnails on local storage while watching existing NAS libraries in real time.
