@@ -11,12 +11,12 @@
 Self-hosted photo gallery, media organizer, and PWA for private homelab storage. Secure sign-in (admin login, sessions, rate limiting), duplicate finder, share links, phone sync, and mTLS-friendly.
 
 
-[![Docker image](https://github.com/CJNG20u/xPhotoLabs-v2/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/CJNG20u/xPhotoLabs-v2/pkgs/container/xphotolabs-v2)
+[![Docker image](https://github.com/CJNG20u/xlab-photos/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/CJNG20u/xlab-photos/pkgs/container/xphotolabs-v2)
 
-🐳 **Docker image:** `ghcr.io/cjng20u/xphotolabs-v2:latest` (amd64 + arm64)
+🐳 **Docker image:** `ghcr.io/cjng20u/xlab-photos:latest` (amd64 + arm64)
 
 ```bash
-docker pull ghcr.io/cjng20u/xphotolabs-v2:latest
+docker pull ghcr.io/cjng20u/xlab-photos:latest
 ```
 
 <img width="551" height="985" alt="image" src="https://github.com/user-attachments/assets/b17c492f-02de-4612-bbfd-dd50cf18d7dc" />
@@ -35,8 +35,8 @@ A fast, minimalist, self-hosted photo and video gallery PWA built with Node.js, 
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/CJNG20u/xPhotoLabs-v2.git
-cd xPhotoLabs-v2
+git clone https://github.com/CJNG20u/xlab-photos.git
+cd xlab-photos
 ```
 
 ### 2. Configure `.env`
@@ -84,7 +84,7 @@ Every push to `main` publishes a ready-made image to GitHub Container Registry, 
 ```yaml
 services:
   xphotolabs:
-    image: ghcr.io/cjng20u/xphotolabs-v2:latest
+    image: ghcr.io/cjng20u/xlab-photos:latest
     container_name: xphotolabs
     restart: unless-stopped
     ports:
