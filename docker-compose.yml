@@ -1,13 +1,13 @@
 services:
   xphotolabs:
-    image: ghcr.io/cjng20u/xlab-photos:latest  # prebuilt image (pulled first)
-    build: .                                     # fallback / `--build` builds from source
+    image: ghcr.io/cjng20u/xlab-photos:latest
     container_name: xphotolabs
     restart: unless-stopped
     ports:
       - "3000:3000"
     env_file:
-      - .env
+      - path: .env
+        required: false
     volumes:
       - ./data:/data
       # Optional: mount an existing photo library (append :ro for read-only)

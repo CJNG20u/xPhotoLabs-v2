@@ -6,7 +6,7 @@
 
 <p align="center"><b>Your photos, browsed fast, still on your own storage.</b></p>
 
-<p align="center"><a href="#quick-start-docker">Install</a> · <a href="#features">Features</a> · <a href="#mounting-an-existing-nas-library">NAS library</a> · <a href="#automated-mobile-sync-apisync">Phone sync</a></p>
+<p align="center"><a href="#install">Install</a> · <a href="#features">Features</a> · <a href="#mounting-an-existing-nas-library">NAS library</a> · <a href="#automated-mobile-sync-apisync">Phone sync</a></p>
 
 Self-hosted photo gallery, media organizer, and PWA for private homelab storage. Secure sign-in (admin login, sessions, rate limiting), duplicate finder, share links, phone sync, and mTLS-friendly.
 
@@ -30,78 +30,38 @@ A fast, minimalist, self-hosted photo and video gallery PWA built with Node.js, 
 - **Organization & Sharing**: Multi-select bulk actions, virtual albums, Favorites, Places map, Trash with permanent disk deletion, and optional password-protected/expiring public share links (`/s/<token>`).
 - **Live NAS Watching & Deduplication**: Real-time folder watching via `chokidar`, SHA-256 deduplication with deleted-hash sync ignore tracking, browser folder auto-sync, Bearer-token `/api/sync` automation, and installable PWA offline thumbnail caching.
 
-## Quick Start (Docker)
+## Install
 
-### 1. Clone the repo
+Every xlab app installs and updates the same way: one folder, one `docker-compose.yml`, one `.env`, your data in `./data`.
+
+```bash
+mkdir -p /opt/xlab-photos && cd /opt/xlab-photos
+curl -fsSLO https://raw.githubusercontent.com/CJNG20u/xlab-photos/main/docker-compose.yml
+curl -fsSL https://raw.githubusercontent.com/CJNG20u/xlab-photos/main/.env.example -o .env
+docker compose up -d
+```
+
+Open `http://<host-ip>:3000`. On first visit you create the admin account (see [Login & Security](#login--security)).
+
+Edit `.env` to set an optional `SYNC_API_TOKEN`, `TRUST_PROXY` or external mounts. To use an existing photo library, add a volume line such as `- /path/to/your/photos:/photos` to `docker-compose.yml` (append `:ro` for read-only). `SEED_DEMO_MEDIA=false` by default, so your gallery starts clean.
+
+## Update
+
+```bash
+cd /opt/xlab-photos
+docker compose pull && docker compose up -d
+```
+
+Images are built automatically for `linux/amd64` and `linux/arm64`. `:latest` follows `main`; every release also gets version tags (for example `:1.1.0`, `:1`), so you can pin one with `image: ghcr.io/cjng20u/xlab-photos:1.1.0`.
+
+## Build from source
 
 ```bash
 git clone https://github.com/CJNG20u/xlab-photos.git
 cd xlab-photos
-```
-
-### 2. Configure `.env`
-
-```bash
 cp .env.example .env
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 ```
-
-Edit `.env` to set an optional `SYNC_API_TOKEN` or external mounts if needed (`SEED_DEMO_MEDIA=false` by default so your gallery starts clean).
-
-### 3. Configure `docker-compose.yml`
-
-`docker-compose.yml` builds locally from source and persists your SQLite database, WebP thumbnails, and uploads in `./data`:
-
-```yaml
-services:
-  xphotolabs:
-    build: .
-    container_name: xphotolabs
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    env_file:
-      - .env
-    volumes:
-      - ./data:/data
-      # Optional: mount an existing photo library (append :ro for read-only)
-      # - /path/to/your/photos:/photos
-    # Optional: match host UID:GID for NAS folder permissions
-    # user: "1000:1000"
-```
-
-### 4. Build and run
-
-```bash
-docker compose up -d --build
-```
-
-Open `http://localhost:3000` in your browser.
-
-### Prefer not to build? Use the prebuilt image
-
-Every push to `main` publishes a ready-made image to GitHub Container Registry, so you can skip cloning and building entirely. Create a folder with this `docker-compose.yml` (and optionally a `.env` from [.env.example](.env.example)):
-
-```yaml
-services:
-  xphotolabs:
-    image: ghcr.io/cjng20u/xlab-photos:latest
-    container_name: xphotolabs
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    env_file:
-      - path: .env
-        required: false
-    volumes:
-      - ./data:/data
-      # - /path/to/your/photos:/photos
-```
-
-```bash
-docker compose pull && docker compose up -d
-```
-
-Images are built automatically for `linux/amd64` and `linux/arm64`. `:latest` follows `main`; each release also gets version tags (e.g. `:2.0.0`, `:2`) so you can pin a version. The repo's own `docker-compose.yml` also pulls this image first and only builds from source when you pass `--build`.
 
 ---
 
