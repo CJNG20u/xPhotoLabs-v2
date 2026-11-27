@@ -147,6 +147,8 @@ export const NavRail: React.FC<NavRailProps> = ({
         })}
       </nav>
 
+      {/* Bottom group: storage indicator + sign out stay together at the bottom */}
+      <div>
       {/* Google Photos style soft tonal storage indicator */}
       {storageOverview && (
         <div className="mt-6 px-4 py-4">
@@ -181,6 +183,7 @@ export const NavRail: React.FC<NavRailProps> = ({
           <span className="truncate">Sign out</span>
         </button>
       )}
+      </div>
     </div>
   );
 
