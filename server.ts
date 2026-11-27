@@ -8,6 +8,7 @@ import multipart from '@fastify/multipart';
 import middie from '@fastify/middie';
 import fastifyStatic from '@fastify/static';
 import { config, ensureStorageDirectories } from './server/config.ts';
+import { registerAuth } from './server/auth.ts';
 import { db } from './server/db.ts';
 import type { AlbumRow, MediaRow, MountRow, ShareRow, SyncTokenRow } from './server/db.ts';
 import {
@@ -39,10 +40,26 @@ import {
 
 ensureStorageDirectories();
 
+// Client IP for login rate limiting. Behind a reverse proxy set TRUST_PROXY=1 (number of proxy hops).
+const trustProxyEnv = (process.env.TRUST_PROXY || '').trim();
+const trustProxy: boolean | number | string =
+  trustProxyEnv === '' || trustProxyEnv === 'false'
+    ? false
+    : /^\d+$/.test(trustProxyEnv)
+      ? Number(trustProxyEnv)
+      : trustProxyEnv === 'true'
+        ? true
+        : trustProxyEnv;
+
 const app = Fastify({
   logger: false,
   bodyLimit: 10 * 1024 * 1024,
+  trustProxy,
 });
+
+// Login (setup screen, session cookies) guarding every /api route. Public share links, the health
+// check and phone-sync Bearer tokens keep working. Registered before any route it protects.
+await registerAuth(app);
 
 await app.register(multipart, {
   limits: {
@@ -523,7 +540,7 @@ app.get('/api/media/:id/thumb/:size', async (req, reply) => {
       const safeThumb = assertSafePathWithin(thumbPath, config.thumbsDir);
       if (fs.existsSync(safeThumb)) {
         reply.header('Content-Type', 'image/webp');
-        reply.header('Cache-Control', 'public, max-age=31536000, immutable');
+        reply.header('Cache-Control', 'private, max-age=31536000, immutable');
         return reply.send(fs.createReadStream(safeThumb));
       }
     } catch {

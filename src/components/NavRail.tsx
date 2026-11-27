@@ -1,7 +1,8 @@
 import React from 'react';
-import { CopyCheck, X } from 'lucide-react';
+import { CopyCheck, LogOut, X } from 'lucide-react';
 import type { NavView, StorageOverview } from '../types';
 import { formatBytes } from '../lib/format';
+import { useAuth } from './AuthGate';
 
 interface NavRailProps {
   activeView: NavView;
@@ -107,6 +108,7 @@ export const NavRail: React.FC<NavRailProps> = ({
   mobileOpen,
   onCloseMobile,
 }) => {
+  const { authEnabled, username, signOut } = useAuth();
   const railContent = (
     <div className="flex flex-col h-full justify-between py-3 px-3">
       <nav className="space-y-0.5" aria-label="Primary gallery navigation">
@@ -166,6 +168,18 @@ export const NavRail: React.FC<NavRailProps> = ({
             {formatBytes(storageOverview.thumbsSizeBytes)} WebP cache
           </p>
         </div>
+      )}
+
+      {authEnabled && (
+        <button
+          type="button"
+          onClick={() => void signOut()}
+          title={username ? `Signed in as ${username}` : 'Sign out'}
+          className="mt-2 w-full flex items-center gap-3.5 px-4 py-2.5 rounded-full text-sm font-medium text-[#444746] dark:text-[#C4C7C5] hover:bg-black/[0.05] dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+        >
+          <LogOut className="w-5 h-5 shrink-0" strokeWidth={1.8} aria-hidden="true" />
+          <span className="truncate">Sign out</span>
+        </button>
       )}
     </div>
   );

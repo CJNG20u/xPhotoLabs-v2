@@ -105,6 +105,17 @@ Images are built automatically for `linux/amd64` and `linux/arm64`. `:latest` fo
 
 ---
 
+## Login & Security
+
+xPhotoLabs requires a sign-in. The first time you open it, you create the admin account; set `ADMIN_USER` / `ADMIN_PASSWORD` in `.env` to seed it instead.
+
+- Passwords are hashed with scrypt; sessions are random tokens in an HttpOnly cookie (only a hash is stored in `data/auth.json`), valid 30 days.
+- Login attempts are rate limited per IP. Behind a reverse proxy or tunnel set `TRUST_PROXY=1`.
+- Still public: `/s/<token>` share links, `/api/health`. Phone-sync Bearer tokens (`SYNC_API_TOKEN` or per-device tokens) work only for `/api/sync`, `/api/sync/check` and `/api/upload`.
+- The PWA share target needs you to be signed in on that device.
+- Change password / sign out everywhere: **Storage Mounts → Account security**.
+- Forgot your password: stop the container, delete `data/auth.json`, start it and create a new account.
+
 ## Mounting an Existing NAS Library
 
 1. Uncomment the photo volume in `docker-compose.yml` and point it to your host/NAS path:

@@ -14,6 +14,7 @@ import {
 import type { FolderSyncProgress, StorageMount, StorageOverview, SyncTokenItem } from '../types';
 import { createMount, createSyncToken, removeMount, rescanMount, revokeSyncToken } from '../lib/api';
 import { formatBytes, formatFullTimestamp } from '../lib/format';
+import { SecuritySection } from './SecuritySection';
 import { supportsDirectoryPicker } from '../lib/folderSync';
 
 interface StorageMountsViewProps {
@@ -482,7 +483,10 @@ export const StorageMountsView: React.FC<StorageMountsViewProps> = ({
           </div>
         </section>
 
-        {/* 5. Self-Hosted Deployment Configuration */}
+        {/* 5. Account security (sign in / out, change password) */}
+        <SecuritySection />
+
+        {/* 6. Self-Hosted Deployment Configuration */}
         <section className="rounded-3xl bg-[#F8FAFD] dark:bg-[#1E1F20] p-6 space-y-1.5">
           <div className="flex items-center gap-2.5 text-base font-medium text-[#1F1F1F] dark:text-[#E3E3E3]">
             <Server className="w-5 h-5 text-[#0B57D0] dark:text-[#A8C7FA]" />

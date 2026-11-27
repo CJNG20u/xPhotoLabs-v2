@@ -11,13 +11,78 @@ import type {
   SyncTokenItem,
 } from '../types';
 
+export const AUTH_REQUIRED_EVENT = 'xphotolabs-auth-required';
+
 async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
   if (!res.ok) {
-    const errBody = (await res.json().catch(() => ({}))) as { error?: string };
+    const errBody = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+    // An expired or revoked session returns AUTH_REQUIRED: send the user back to the sign-in screen.
+    // (Wrong-password answers use a different code and are shown by their own form.)
+    if (res.status === 401 && errBody.code === 'AUTH_REQUIRED' && typeof window !== 'undefined') {
+      window.dispatchEvent(new Event(AUTH_REQUIRED_EVENT));
+    }
     throw new Error(errBody.error || `Request failed (${res.status})`);
   }
   return res.json() as Promise<T>;
+}
+
+/** Removes cached thumbnails so a signed-out shared device doesn't keep showing your photos offline. */
+export async function clearPrivateCaches(): Promise<void> {
+  try {
+    if (typeof caches === 'undefined') return;
+    const keys = await caches.keys();
+    await Promise.all(keys.filter((k) => k.startsWith('xphotolabs-thumbs')).map((k) => caches.delete(k)));
+  } catch {
+    // best effort
+  }
+}
+
+export interface AuthStatus {
+  authEnabled: boolean;
+  setupRequired: boolean;
+  authenticated: boolean;
+  username: string | null;
+  minPasswordLength: number;
+}
+
+export function fetchAuthStatus(): Promise<AuthStatus> {
+  return apiJson<AuthStatus>('/api/auth/status');
+}
+
+export function loginRequest(username: string, password: string): Promise<AuthStatus> {
+  return apiJson<AuthStatus>('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export function setupAccountRequest(username: string, password: string): Promise<AuthStatus> {
+  return apiJson<AuthStatus>('/api/auth/setup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export function logoutRequest(): Promise<{ ok: boolean }> {
+  return apiJson<{ ok: boolean }>('/api/auth/logout', { method: 'POST' });
+}
+
+export function logoutAllRequest(): Promise<{ ok: boolean; revoked: number }> {
+  return apiJson<{ ok: boolean; revoked: number }>('/api/auth/logout-all', { method: 'POST' });
+}
+
+export function changePasswordRequest(
+  currentPassword: string,
+  newPassword: string
+): Promise<{ ok: boolean; otherSessionsSignedOut: number }> {
+  return apiJson('/api/auth/change-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
 }
 
 export async function fetchMedia(params: {
