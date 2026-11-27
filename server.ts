@@ -10,6 +10,15 @@ import fastifyStatic from '@fastify/static';
 import { config, ensureStorageDirectories } from './server/config.ts';
 import { db } from './server/db.ts';
 import type { AlbumRow, MediaRow, MountRow, ShareRow, SyncTokenRow } from './server/db.ts';
+import {
+  computeDuplicateGroups,
+  getDuplicateScanStatus,
+  parseSensitivity,
+  resolveAllDuplicateGroups,
+  resolveDuplicateGroup,
+  startDuplicateScan,
+  summarizeGroups,
+} from './server/duplicates.ts';
 import { classifyMediaExtension, ingestMediaFile, seedInitialGalleryIfEmpty } from './server/mediaPipeline.ts';
 import {
   addExternalMount,
@@ -887,6 +896,87 @@ app.get('/api/places', async () => {
       coverUrl: r.cover_id ? `/api/media/${r.cover_id}/thumb/400` : null,
     })),
   };
+});
+
+// ============================================================================
+// DUPLICATE DETECTION & SAFE RESOLUTION (Visual dHash + Soft-Trash Only)
+// ============================================================================
+
+app.post('/api/duplicates/scan', async (req, reply) => {
+  if (!checkOptionalBearerAuth(req, reply)) return;
+  const body = (req.body || {}) as { sensitivity?: unknown };
+  const sensitivity = parseSensitivity(body.sensitivity);
+  return startDuplicateScan(sensitivity);
+});
+
+app.get('/api/duplicates/status', async (req, reply) => {
+  if (!checkOptionalBearerAuth(req, reply)) return;
+  const query = (req.query || {}) as { sensitivity?: unknown };
+  const sensitivity = query.sensitivity !== undefined ? parseSensitivity(query.sensitivity) : undefined;
+  return getDuplicateScanStatus(sensitivity);
+});
+
+app.get('/api/duplicates', async (req, reply) => {
+  if (!checkOptionalBearerAuth(req, reply)) return;
+  const query = (req.query || {}) as { sensitivity?: unknown };
+  const sensitivity = parseSensitivity(query.sensitivity);
+  const status = getDuplicateScanStatus(sensitivity);
+  const groups = computeDuplicateGroups(sensitivity);
+  const summary = summarizeGroups(groups);
+
+  return {
+    sensitivity,
+    state: status.state,
+    processed: status.processed,
+    total: status.total,
+    lastScanAt: status.lastScanAt,
+    groupCount: summary.groupCount,
+    removableCount: summary.removableCount,
+    removableBytes: summary.removableBytes,
+    groups,
+  };
+});
+
+app.post('/api/duplicates/resolve', async (req, reply) => {
+  if (!checkOptionalBearerAuth(req, reply)) return;
+  const body = (req.body || {}) as {
+    keepId?: unknown;
+    trashIds?: unknown;
+    sensitivity?: unknown;
+  };
+
+  if (typeof body.keepId !== 'string' || !body.keepId.trim()) {
+    return reply.code(400).send({ error: 'keepId must be a valid media ID' });
+  }
+  if (!Array.isArray(body.trashIds) || body.trashIds.length === 0) {
+    return reply.code(400).send({ error: 'trashIds must be a non-empty array of media IDs' });
+  }
+  const trashIds = body.trashIds.filter((id): id is string => typeof id === 'string' && id.trim().length > 0);
+  if (trashIds.length !== body.trashIds.length) {
+    return reply.code(400).send({ error: 'Every item in trashIds must be a valid media ID string' });
+  }
+
+  const sensitivity = parseSensitivity(body.sensitivity);
+  try {
+    return resolveDuplicateGroup({
+      keepId: body.keepId.trim(),
+      trashIds: trashIds.map((id) => id.trim()),
+      sensitivity,
+    });
+  } catch (err) {
+    return reply.code(400).send({ error: err instanceof Error ? err.message : 'Failed to resolve duplicate group' });
+  }
+});
+
+app.post('/api/duplicates/resolve-all', async (req, reply) => {
+  if (!checkOptionalBearerAuth(req, reply)) return;
+  const body = (req.body || {}) as { sensitivity?: unknown };
+  const sensitivity = parseSensitivity(body.sensitivity);
+  try {
+    return resolveAllDuplicateGroups(sensitivity);
+  } catch (err) {
+    return reply.code(500).send({ error: err instanceof Error ? err.message : 'Failed to resolve duplicate groups' });
+  }
 });
 
 // ============================================================================

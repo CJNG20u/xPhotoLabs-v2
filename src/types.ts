@@ -1,4 +1,4 @@
-export type NavView = 'photos' | 'favorites' | 'albums' | 'places' | 'trash' | 'mounts';
+export type NavView = 'photos' | 'favorites' | 'albums' | 'places' | 'duplicates' | 'trash' | 'mounts';
 
 export interface MediaItem {
   id: string;
@@ -114,4 +114,73 @@ export interface FolderSyncProgress {
   skippedCount: number;
   errorCount: number;
   message: string;
+}
+
+export type DuplicateSensitivity = 'strict' | 'similar' | 'loose';
+
+export interface DuplicateScanStatus {
+  state: 'idle' | 'scanning' | 'ready' | 'error';
+  processed: number;
+  total: number;
+  groupCount: number;
+  removableCount: number;
+  removableBytes: number;
+  sensitivity: DuplicateSensitivity;
+  lastScanAt: string | null;
+  error: string | null;
+}
+
+export interface DuplicateGroupItem {
+  id: string;
+  sha256: string;
+  filename: string;
+  file_path: string;
+  folderName: string;
+  sourceType: 'upload' | 'mount';
+  mountId: string | null;
+  mountName: string;
+  mediaType: 'image' | 'video';
+  mimeType: string;
+  width: number;
+  height: number;
+  size_bytes: number;
+  durationSec: number | null;
+  taken_at: string;
+  created_at: string;
+  camera: string | null;
+  cameraMake: string | null;
+  cameraModel: string | null;
+  lensModel: string | null;
+  focalLength: string | null;
+  aperture: string | null;
+  shutterSpeed: string | null;
+  iso: number | null;
+  gpsLat: number | null;
+  gpsLng: number | null;
+  locationName: string | null;
+  is_favorite: boolean;
+  isShared: boolean;
+  albumCount: number;
+  dominantColor: string;
+  thumb400Url: string;
+  thumb1600Url: string;
+  originalUrl: string;
+}
+
+export interface DuplicateGroup {
+  id: string;
+  suggestedKeepId: string;
+  items: DuplicateGroupItem[];
+}
+
+export interface DuplicatesResponse {
+  sensitivity: DuplicateSensitivity;
+  state: 'idle' | 'scanning' | 'ready' | 'error';
+  processed: number;
+  total: number;
+  lastScanAt: string | null;
+  groupCount: number;
+  removableCount: number;
+  removableBytes: number;
+  groups: DuplicateGroup[];
 }

@@ -1,5 +1,8 @@
 import type {
   AlbumSummary,
+  DuplicateScanStatus,
+  DuplicateSensitivity,
+  DuplicatesResponse,
   MediaItem,
   PlaceCluster,
   ShareLinkItem,
@@ -206,4 +209,49 @@ export async function createSyncToken(label: string): Promise<SyncTokenItem & { 
 
 export async function revokeSyncToken(id: string): Promise<{ deleted: boolean }> {
   return apiJson(`/api/sync-tokens/${id}`, { method: 'DELETE' });
+}
+
+export async function startDuplicatesScan(
+  sensitivity: DuplicateSensitivity = 'similar'
+): Promise<DuplicateScanStatus> {
+  return apiJson('/api/duplicates/scan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sensitivity }),
+  });
+}
+
+export async function fetchDuplicatesStatus(
+  sensitivity?: DuplicateSensitivity
+): Promise<DuplicateScanStatus> {
+  const qs = sensitivity ? `?sensitivity=${encodeURIComponent(sensitivity)}` : '';
+  return apiJson(`/api/duplicates/status${qs}`);
+}
+
+export async function fetchDuplicates(
+  sensitivity: DuplicateSensitivity = 'similar'
+): Promise<DuplicatesResponse> {
+  return apiJson(`/api/duplicates?sensitivity=${encodeURIComponent(sensitivity)}`);
+}
+
+export async function resolveDuplicatesGroup(payload: {
+  keepId: string;
+  trashIds: string[];
+  sensitivity: DuplicateSensitivity;
+}): Promise<{ keepId: string; trashedIds: string[]; trashedCount: number; freedBytes: number }> {
+  return apiJson('/api/duplicates/resolve', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function resolveAllDuplicates(
+  sensitivity: DuplicateSensitivity
+): Promise<{ groups: number; trashedCount: number; freedBytes: number; trashedIds: string[] }> {
+  return apiJson('/api/duplicates/resolve-all', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sensitivity }),
+  });
 }

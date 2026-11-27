@@ -107,6 +107,13 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_media_location ON media(location_name);
 `);
 
+// Safe, idempotent migration for perceptual hash column on existing databases
+const mediaColumns = db.prepare('PRAGMA table_info(media)').all() as Array<{ name: string }>;
+if (!mediaColumns.some((col) => col.name === 'phash')) {
+  db.exec('ALTER TABLE media ADD COLUMN phash TEXT');
+}
+db.exec('CREATE INDEX IF NOT EXISTS idx_media_phash ON media(phash)');
+
 export interface MediaRow {
   id: string;
   sha256: string;
@@ -138,6 +145,7 @@ export interface MediaRow {
   thumb_400: string | null;
   thumb_1600: string | null;
   dominant_color: string | null;
+  phash: string | null;
 }
 
 export interface MountRow {

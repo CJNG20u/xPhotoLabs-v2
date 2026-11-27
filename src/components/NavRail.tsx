@@ -1,5 +1,5 @@
 import React from 'react';
-import { X } from 'lucide-react';
+import { CopyCheck, X } from 'lucide-react';
 import type { NavView, StorageOverview } from '../types';
 import { formatBytes } from '../lib/format';
 
@@ -7,6 +7,7 @@ interface NavRailProps {
   activeView: NavView;
   onSelectView: (view: NavView) => void;
   storageOverview: StorageOverview | null;
+  duplicatesCount?: number;
   mobileOpen: boolean;
   onCloseMobile: () => void;
 }
@@ -58,6 +59,8 @@ const NavIcon: React.FC<{ id: NavView; active: boolean }> = ({ id, active }) => 
           <circle cx="12" cy="9" r="2.5" />
         </svg>
       );
+    case 'duplicates':
+      return <CopyCheck className="w-5 h-5 shrink-0" strokeWidth={active ? 2.2 : 1.8} aria-hidden="true" />;
     case 'trash':
       return active ? (
         <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -91,6 +94,7 @@ const NAV_ITEMS: Array<{ id: NavView; label: string }> = [
   { id: 'favorites', label: 'Favorites' },
   { id: 'albums', label: 'Albums' },
   { id: 'places', label: 'Places' },
+  { id: 'duplicates', label: 'Duplicates' },
   { id: 'trash', label: 'Trash' },
   { id: 'mounts', label: 'Storage Mounts' },
 ];
@@ -99,6 +103,7 @@ export const NavRail: React.FC<NavRailProps> = ({
   activeView,
   onSelectView,
   storageOverview,
+  duplicatesCount = 0,
   mobileOpen,
   onCloseMobile,
 }) => {
@@ -107,10 +112,12 @@ export const NavRail: React.FC<NavRailProps> = ({
       <nav className="space-y-0.5" aria-label="Primary gallery navigation">
         {NAV_ITEMS.map((item) => {
           const active = activeView === item.id;
-          const trashCount =
+          const badgeCount =
             item.id === 'trash' && storageOverview && storageOverview.trashCount > 0
               ? storageOverview.trashCount
-              : null;
+              : item.id === 'duplicates' && duplicatesCount > 0
+                ? duplicatesCount
+                : null;
 
           return (
             <button
@@ -130,8 +137,8 @@ export const NavRail: React.FC<NavRailProps> = ({
                 <NavIcon id={item.id} active={active} />
                 <span>{item.label}</span>
               </span>
-              {trashCount !== null && (
-                <span className="text-xs tabular-nums opacity-75">{trashCount}</span>
+              {badgeCount !== null && (
+                <span className="text-xs tabular-nums opacity-75">{badgeCount}</span>
               )}
             </button>
           );

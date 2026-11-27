@@ -7,6 +7,7 @@ import ffmpeg from 'fluent-ffmpeg';
 import { config } from './config.ts';
 import { db } from './db.ts';
 import type { MediaRow } from './db.ts';
+import { computeImageDHash } from './duplicates.ts';
 import { assertSafePathWithin, sanitizeFilename } from './security.ts';
 
 const IMAGE_EXTENSIONS = new Set([
@@ -233,12 +234,12 @@ const insertMediaStmt = db.prepare(`
     id, sha256, filename, source_type, mount_id, file_path, mime_type, media_type,
     size_bytes, width, height, duration_sec, taken_at, created_at,
     camera_make, camera_model, lens_model, focal_length, aperture, shutter_speed, iso,
-    gps_lat, gps_lng, location_name, is_favorite, is_trashed, thumb_400, thumb_1600, dominant_color
+    gps_lat, gps_lng, location_name, is_favorite, is_trashed, thumb_400, thumb_1600, dominant_color, phash
   ) VALUES (
     @id, @sha256, @filename, @source_type, @mount_id, @file_path, @mime_type, @media_type,
     @size_bytes, @width, @height, @duration_sec, @taken_at, @created_at,
     @camera_make, @camera_model, @lens_model, @focal_length, @aperture, @shutter_speed, @iso,
-    @gps_lat, @gps_lng, @location_name, @is_favorite, 0, @thumb_400, @thumb_1600, @dominant_color
+    @gps_lat, @gps_lng, @location_name, @is_favorite, 0, @thumb_400, @thumb_1600, @dominant_color, @phash
   )
 `);
 
@@ -346,6 +347,7 @@ export async function ingestMediaFile(params: {
 
   let thumb400: string | null = null;
   let thumb1600: string | null = null;
+  let phash: string | null = null;
 
   if (classified.mediaType === 'image') {
     meta = await extractImageMetadata(finalPath, stat.mtime);
@@ -357,6 +359,7 @@ export async function ingestMediaFile(params: {
     } catch (err) {
       console.warn(`Thumbnail generation failed for image ${safeName}:`, err);
     }
+    phash = await computeImageDHash(thumb400 || finalPath);
   } else {
     try {
       const probed = await probeVideo(finalPath);
@@ -436,6 +439,7 @@ export async function ingestMediaFile(params: {
     thumb_400: thumb400,
     thumb_1600: thumb1600,
     dominant_color: meta.dominantColor,
+    phash,
   };
 
     try {

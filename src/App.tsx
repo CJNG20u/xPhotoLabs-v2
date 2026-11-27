@@ -20,6 +20,7 @@ import {
   batchMediaAction,
   emptyTrash,
   fetchAlbums,
+  fetchDuplicatesStatus,
   fetchMedia,
   fetchMounts,
   fetchPlaces,
@@ -47,6 +48,7 @@ import { VirtualizedTimelineGrid } from './components/VirtualizedTimelineGrid';
 import { Lightbox } from './components/Lightbox';
 import { AlbumsView } from './components/AlbumsView';
 import { PlacesView } from './components/PlacesView';
+import { DuplicatesView } from './components/DuplicatesView';
 import { StorageMountsView } from './components/StorageMountsView';
 import { ShareModal } from './components/ShareModal';
 import { AddToAlbumModal } from './components/AddToAlbumModal';
@@ -128,7 +130,13 @@ function GalleryWorkspace() {
     count: number;
   } | null>(null);
   const [deletingPermanently, setDeletingPermanently] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [duplicatesCount, setDuplicatesCount] = useState(0);
+  const [duplicatesRefreshKey, setDuplicatesRefreshKey] = useState(0);
+  const [compareLightboxItems, setCompareLightboxItems] = useState<MediaItem[] | null>(null);
+  const [toastState, setToastState] = useState<{
+    message: string;
+    undoIds?: string[];
+  } | null>(null);
   const [isDraggingUpload, setIsDraggingUpload] = useState(false);
 
   // Folder Auto-Sync (File System Access API + IndexedDB)
@@ -140,14 +148,19 @@ function GalleryWorkspace() {
   const folderFallbackInputRef = useRef<HTMLInputElement>(null);
 
   const showToast = useCallback((msg: string) => {
-    setToastMessage(msg);
+    setToastState({ message: msg });
+  }, []);
+
+  const showUndoTrashToast = useCallback((msg: string, undoIds: string[]) => {
+    setToastState({ message: msg, undoIds });
   }, []);
 
   useEffect(() => {
-    if (!toastMessage) return;
-    const t = setTimeout(() => setToastMessage(null), 4500);
+    if (!toastState) return;
+    const timeoutMs = toastState.undoIds && toastState.undoIds.length > 0 ? 8000 : 4500;
+    const t = setTimeout(() => setToastState(null), timeoutMs);
     return () => clearTimeout(t);
-  }, [toastMessage]);
+  }, [toastState]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -168,16 +181,18 @@ function GalleryWorkspace() {
   }, [showToast]);
 
   const loadOverviewAndMeta = useCallback(async () => {
-    const [ov, alb, plc, sh] = await Promise.all([
+    const [ov, alb, plc, sh, dup] = await Promise.all([
       fetchStorageOverview(),
       fetchAlbums(),
       fetchPlaces(),
       fetchShares(),
+      fetchDuplicatesStatus().catch(() => null),
     ]);
     setStorageOverview(ov);
     setAlbums(alb.albums);
     setPlaces(plc.places);
     setShares(sh.shares);
+    if (dup) setDuplicatesCount(dup.groupCount);
   }, []);
 
   const loadMountsAndTokens = useCallback(async () => {
@@ -365,8 +380,9 @@ function GalleryWorkspace() {
     await handleDirectUploadFiles(files);
   };
 
-  const activeLightboxList =
-    activeView === 'albums' && activeAlbum
+  const activeLightboxList = compareLightboxItems
+    ? compareLightboxItems
+    : activeView === 'albums' && activeAlbum
       ? albumItems
       : activeView === 'places' && activePlace
         ? placeItems
@@ -512,8 +528,23 @@ function GalleryWorkspace() {
     setActiveView(view);
     setSelectedIds(new Set());
     setIsSelectMode(false);
+    setCompareLightboxItems(null);
     if (view !== 'albums') setActiveAlbum(null);
     if (view !== 'places') setActivePlace(null);
+  };
+
+  const handleUndoTrash = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    try {
+      await batchMediaAction({ ids, action: 'restore' });
+      setToastState({
+        message: `Restored ${ids.length} ${ids.length === 1 ? 'item' : 'items'} from Trash.`,
+      });
+      setDuplicatesRefreshKey((k) => k + 1);
+      await refreshEverything();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Undo failed');
+    }
   };
 
   const gridDensityControl = (
@@ -656,6 +687,7 @@ function GalleryWorkspace() {
           activeView={activeView}
           onSelectView={handleSelectView}
           storageOverview={storageOverview}
+          duplicatesCount={duplicatesCount}
           mobileOpen={mobileNavOpen}
           onCloseMobile={() => setMobileNavOpen(false)}
         />
@@ -703,6 +735,18 @@ function GalleryWorkspace() {
               onToggleSelect={handleToggleSelect}
               onOpenLightbox={(idx) => setLightboxIndex(idx)}
               onToggleFavorite={handleToggleFavorite}
+            />
+          ) : activeView === 'duplicates' ? (
+            <DuplicatesView
+              refreshTrigger={duplicatesRefreshKey}
+              onGroupCountChange={setDuplicatesCount}
+              onRefreshAfterChange={refreshEverything}
+              onShowUndoToast={showUndoTrashToast}
+              onShowToast={showToast}
+              onOpenCompareLightbox={(items, startIdx) => {
+                setCompareLightboxItems(items);
+                setLightboxIndex(startIdx);
+              }}
             />
           ) : activeView === 'mounts' ? (
             <StorageMountsView
@@ -838,14 +882,20 @@ function GalleryWorkspace() {
           items={activeLightboxList}
           currentIndex={lightboxIndex}
           onChangeIndex={setLightboxIndex}
-          onClose={() => setLightboxIndex(null)}
-          onToggleFavorite={activeView === 'trash' ? undefined : handleToggleFavorite}
-          onTrash={activeView === 'trash' ? undefined : handleTrashSingle}
+          onClose={() => {
+            setLightboxIndex(null);
+            setCompareLightboxItems(null);
+          }}
+          readOnly={Boolean(compareLightboxItems)}
+          onToggleFavorite={activeView === 'trash' || compareLightboxItems ? undefined : handleToggleFavorite}
+          onTrash={activeView === 'trash' || compareLightboxItems ? undefined : handleTrashSingle}
           onOpenAddToAlbum={
-            activeView === 'trash' ? undefined : (item) => setAlbumModalMediaIds([item.id])
+            activeView === 'trash' || compareLightboxItems
+              ? undefined
+              : (item) => setAlbumModalMediaIds([item.id])
           }
           onOpenShare={
-            activeView === 'trash'
+            activeView === 'trash' || compareLightboxItems
               ? undefined
               : (item) =>
                   setShareTarget({ targetType: 'media', targetId: item.id, title: item.filename })
@@ -892,14 +942,26 @@ function GalleryWorkspace() {
         />
       )}
 
-      {/* Material 3 Snackbar Toast */}
-      {toastMessage && (
+      {/* Material 3 Snackbar Toast (with optional Undo action) */}
+      {toastState && (
         <div
           role="status"
-          className="fixed bottom-5 right-5 z-40 max-w-sm rounded-full bg-[#1F1F1F] dark:bg-[#E3E3E3] text-white dark:text-[#1F1F1F] px-4 py-2.5 text-xs font-medium shadow-xl flex items-center gap-2.5"
+          className="fixed bottom-5 right-5 z-40 max-w-md rounded-full bg-[#1F1F1F] dark:bg-[#E3E3E3] text-white dark:text-[#1F1F1F] px-4 py-2.5 text-xs font-medium shadow-xl flex items-center gap-2.5"
         >
           <CheckCircle2 className="w-4 h-4 text-[#A8C7FA] dark:text-[#0B57D0] shrink-0" />
-          <span>{toastMessage}</span>
+          <span>{toastState.message}</span>
+          {toastState.undoIds && toastState.undoIds.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                const ids = toastState.undoIds!;
+                void handleUndoTrash(ids);
+              }}
+              className="ml-1 px-2.5 py-1 rounded-full bg-white/15 dark:bg-black/10 text-[#A8C7FA] dark:text-[#0B57D0] font-semibold hover:bg-white/25 dark:hover:bg-black/15 transition-colors cursor-pointer whitespace-nowrap"
+            >
+              Undo
+            </button>
+          )}
         </div>
       )}
 
