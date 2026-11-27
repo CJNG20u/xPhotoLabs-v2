@@ -11,7 +11,7 @@
 Self-hosted photo gallery, media organizer, and PWA for private homelab storage. Secure sign-in (admin login, sessions, rate limiting), duplicate finder, share links, phone sync, and mTLS-friendly.
 
 
-[![Docker image](https://github.com/CJNG20u/xlab-photos/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/CJNG20u/xlab-photos/pkgs/container/xphotolabs-v2)
+[![Docker image](https://github.com/CJNG20u/xlab-photos/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/CJNG20u/xlab-photos/pkgs/container/xlab-photos)
 
 🐳 **Docker image:** `ghcr.io/cjng20u/xlab-photos:latest` (amd64 + arm64)
 
