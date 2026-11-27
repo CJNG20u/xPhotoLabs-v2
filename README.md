@@ -8,7 +8,7 @@
 
 <p align="center"><a href="#quick-start-docker">Install</a> · <a href="#features">Features</a> · <a href="#mounting-an-existing-nas-library">NAS library</a> · <a href="#automated-mobile-sync-apisync">Phone sync</a></p>
 
-xPhotoLabs is a photo and video gallery for your own server. It watches the folders you already have, makes quick thumbnails, and gives you a smooth timeline, albums, a map and share links. Your originals stay exactly where they are.
+Self-hosted photo gallery, media organizer, and PWA for private homelab storage. Secure sign-in (admin login, sessions, rate limiting), duplicate finder, share links, phone sync, and mTLS-friendly.
 
 
 [![Docker image](https://github.com/CJNG20u/xPhotoLabs-v2/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/CJNG20u/xPhotoLabs-v2/pkgs/container/xphotolabs-v2)
