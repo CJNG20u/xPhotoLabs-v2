@@ -19,7 +19,8 @@ xPhotoLabs is a photo and video gallery for your own server. It watches the fold
 docker pull ghcr.io/cjng20u/xphotolabs-v2:latest
 ```
 
-<img width="1151" height="1164" alt="image" src="https://github.com/user-attachments/assets/906a1dab-cd80-427e-84fd-93728409fe91" />
+<img width="551" height="985" alt="image" src="https://github.com/user-attachments/assets/b17c492f-02de-4612-bbfd-dd50cf18d7dc" />
+
 
 A fast, minimalist, self-hosted photo and video gallery PWA built with Node.js, Fastify, SQLite (WAL), and React. Keeps metadata and `400px` / `1600px` WebP thumbnails on local storage while watching existing NAS libraries in real time.
 
